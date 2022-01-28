@@ -20,7 +20,7 @@ class UI(QtWidgets.QWidget):
     def _createUI(self):
         # Library Directory selector widgets
         self.le_lib_dir = QtWidgets.QLineEdit()
-        self.le_lib_dir.setText('$HIP/')
+        self.le_lib_dir.setText(plglobals.lib_path)
         btn_lib_dir = hou.qt.FileChooserButton()
         btn_lib_dir.setFileChooserTitle(
             'Choose Animation Library Directory...')

@@ -44,7 +44,9 @@ class CnwPose(QtWidgets.QWidget):
 
         self.tab_widget = QtWidgets.QTabWidget()
         self.tab_widget.addTab(self.capture, 'Capture')
-        self.tab_widget.addTab(QtWidgets.QLabel('TODO'), 'Library')
+        wip = QtWidgets.QLabel('TODO')
+        wip.setAlignment(QtCore.Qt.AlignCenter)
+        self.tab_widget.addTab(wip, 'Library')
 
         mainLayout = QtWidgets.QVBoxLayout()
         mainLayout.addWidget(self.header)
