@@ -87,7 +87,7 @@ class UI(QtWidgets.QWidget):
         jsn = json.dumps(anim_dict, indent=4)
         self.te_debug.clear()
         filename = os.path.join(hou.expandString(
-            plglobals.lib_path), "clips", self.le_cap_name.text())
+            plglobals.lib_path), "clips", self.le_cap_name.text().replace(" ", "_"))
         self.te_debug.insertPlainText("Filename: '{}'\n\n".format(filename))
         self.te_debug.insertPlainText("File Contents:\n")
         self.te_debug.insertPlainText(str(jsn))
