@@ -67,17 +67,17 @@ class CnwPose(QtWidgets.QWidget):
                     frame = f.asJSON()
                     key_frames_list.append(frame)
                     anim_dict[str(i.name())] = key_frames_list
-        print('time for loop: {}'.format(time.time()-sec))
+        print(f'time for loop: {time.time()-sec}')
 
         sec = time.time()
         jsn = json.dumps(anim_dict, indent=4)
-        print('time to jsn: {}'.format(time.time()-sec))
+        print(f'time to jsn: {time.time()-sec}')
 
         # GZip
         sec = time.time()
         cmp = gzip.compress(jsn.encode('UTF-8'))
         obj = gzip.decompress(cmp).decode('UTF-8')
-        print('gzip time: {0:.4f}ms'.format((time.time()-sec)*100))
+        print(f'gzip time: {(time.time()-sec)*100:.4f}ms')
 
         # End
-        print('Total Time: {0:.4f}ms'.format((time.time()-tsec)*100))
+        print('Total Time: {(time.time()-tsec)*100:.4f}ms')
