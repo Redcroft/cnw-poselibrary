@@ -10,6 +10,7 @@ from PySide2 import QtCore
 from . import plglobals
 from . import header
 from . import capture
+from . import library
 
 
 '''
@@ -28,6 +29,7 @@ if plglobals.debug == 1:
     reload(plglobals)
     reload(capture)
     reload(header)
+    reload(library)
 
 
 class CnwPose(QtWidgets.QWidget):
@@ -41,12 +43,11 @@ class CnwPose(QtWidgets.QWidget):
 
         self.header = header.UI()
         self.capture = capture.UI()
+        self.library = library.UI()
 
         self.tab_widget = QtWidgets.QTabWidget()
         self.tab_widget.addTab(self.capture, 'Capture')
-        wip = QtWidgets.QLabel('TODO')
-        wip.setAlignment(QtCore.Qt.AlignCenter)
-        self.tab_widget.addTab(wip, 'Library')
+        self.tab_widget.addTab(self.library, 'Library')
 
         mainLayout = QtWidgets.QVBoxLayout()
         mainLayout.addWidget(self.header)

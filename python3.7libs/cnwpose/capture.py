@@ -3,6 +3,7 @@ import hou
 import json
 import os
 
+from PIL import Image
 from PySide2 import QtWidgets
 from PySide2 import QtCore
 
@@ -29,6 +30,7 @@ class UI(QtWidgets.QWidget):
         Build the ui
         '''
         main_layout = QtWidgets.QVBoxLayout()
+        self.setLayout(main_layout)
 
         help_text = QtWidgets.QLabel(plglobals.CAP_HELP_TEXT)
         help_text.setAlignment(QtCore.Qt.AlignCenter)
@@ -52,16 +54,19 @@ class UI(QtWidgets.QWidget):
         self.btn_cap_pose = QtWidgets.QPushButton('Capture Pose')
         self.btn_cap_pose.clicked.connect(self._capturePose)
         self.btn_cap_pose.setFixedWidth(hou.ui.scaledSize(147))
+        self.btn_screenshot = QtWidgets.QPushButton('Screenshot')
+        self.btn_screenshot.clicked.connect(self._captureStill)
         btn_layout = QtWidgets.QHBoxLayout()
         btn_layout.addWidget(self.btn_cap_clip)
         btn_layout.addWidget(self.btn_cap_pose)
+        btn_layout.addWidget(self.btn_screenshot)
         form_layout.addRow(QtWidgets.QLabel(), btn_layout)
 
         # Debug
         self.te_debug = QtWidgets.QPlainTextEdit()
         main_layout.addWidget(self.te_debug)
         # main_layout.addStretch()
-        self.setLayout(main_layout)
+
 
     def _captureClip(self):
         '''Capture Animation clip from the selected channels.
@@ -71,6 +76,9 @@ The time range is offset to start at frame 0, rather than when it currently star
             frame_range = hou.playbar.frameRange()
         start_time = hou.frameToTime(frame_range[0])
         sel_channels = self._selectChannels()
+        if len(sel_channels) == 0:
+            utils.warningDialog('No channels are available in the Channel List')
+            return False
         anim_dict = {}
         for p in sel_channels:
             key_frames = p.keyframesInRange(frame_range[0], frame_range[1])
@@ -101,11 +109,13 @@ The time range is offset to start at frame 0, rather than when it currently star
     def _capturePose(self):
         '''Capture a Pose from the selected controls in the channel list. The stored frame starts from zero'''
         sel_channels = self._selectChannels()
+        if len(sel_channels) == 0:
+            utils.warningDialog('No channels are avaliable in the Channel List')
+            return False
         anim_dict = {}
         for p in sel_channels:
             anim_dict[str(p.name())] = self._jsonFromValue(
                 0.0, p.eval())
-        print(anim_dict)
         jsn = json.dumps(anim_dict, indent=4)
         self.te_debug.clear()
         filename = os.path.join(hou.expandString(plglobals.lib_path),
@@ -122,6 +132,8 @@ The time range is offset to start at frame 0, rather than when it currently star
         ''' Return a tuple of all the currently selected channels in the
         Channel List'''
         selection = hou.playbar.channelList().selected()
+        if len(selection)==0:
+            selection = hou.playbar.channelList().parms()
         return selection
 
     def _jsonFromValue(self, time, value):
@@ -146,3 +158,36 @@ The time range is offset to start at frame 0, rather than when it currently star
         except IOError as e:
             utils.warningDialog(f"Unable to read file.\nError: {e}")
             return False
+
+    def _captureStill(self):
+        # GET VIEWPORT CAMERA PATH
+        cur_desktop = hou.ui.curDesktop()
+        desktop = cur_desktop.name()
+        panetab = cur_desktop.paneTabOfType(hou.paneTabType.SceneViewer).name()
+        persp = cur_desktop.paneTabOfType(hou.paneTabType.SceneViewer).curViewport().name()
+        camera_path = f"{desktop}.{panetab}.world.{persp}"
+
+        # BUILD DEFAULT FILE NAME FROM CURRENT TIME
+        default_filename = "screenshot.jpg"
+
+        # SELECT FILE
+        filename = hou.expandString("$HOME/screenshot.jpg")
+        object = hou.playbar.channelList().parms()[0].node().name()
+
+        # WRITE TO FILE
+        if filename is not None:
+            frame = hou.frame()
+            hou.hscript(f"viewwrite -v {object} -R beauty -f {frame} {frame} {camera_path} {filename}")
+
+        try:
+            img = Image.open(filename)
+            w, h = img.size
+            crop = min(w, h)
+            img2 = img.crop(((w - crop)//2,
+                            (h - crop)//2,
+                            (w + crop)//2,
+                            (h + crop)//2)).resize((512,512))
+            filename_crop = hou.expandString("$HOME/screenshot_square.jpg")
+            img2.save(filename)
+        except:
+            print("Failed")
