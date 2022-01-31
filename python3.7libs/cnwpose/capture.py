@@ -64,10 +64,12 @@ class UI(QtWidgets.QWidget):
         self.setLayout(main_layout)
 
     def _captureClip(self):
-        '''Capture Animation clip from the selected channels'''
+        '''Capture Animation clip from the selected channels.
+The time range is offset to start at frame 0, rather than when it currently starts'''
         frame_range = hou.playbar.selectionRange()
         if frame_range == None:
             frame_range = hou.playbar.frameRange()
+        start_time = hou.frameToTime(frame_range[0])
         sel_channels = self._selectChannels()
         anim_dict = {}
         for p in sel_channels:
@@ -76,11 +78,12 @@ class UI(QtWidgets.QWidget):
                 key_frames_list = []
                 for f in key_frames:
                     frame = f.asJSON()
+                    frame['time'] = frame['time'] - start_time
                     key_frames_list.append(frame)
                     anim_dict[str(p.name())] = key_frames_list
             else:
                 anim_dict[str(p.name())] = self._jsonFromValue(
-                    hou.frameToTime(frame_range[0]), p.eval())
+                    hou.frameToTime(frame_range[0])-start_time, p.eval())
         jsn = json.dumps(anim_dict, indent=4)
         self.te_debug.clear()
         filename = os.path.join(hou.expandString(plglobals.lib_path),
@@ -88,18 +91,20 @@ class UI(QtWidgets.QWidget):
                                 self.le_cap_name.text().replace(" ", "_"))
         self.te_debug.insertPlainText(
             f"Storing Clip\nFrame Range: {frame_range[0]} {frame_range[1]}\n")
+        self.te_debug.insertPlainText(
+            f"Output Range: {frame_range[0] - frame_range[0]} {frame_range[1] - frame_range[0]}\n")
         self.te_debug.insertPlainText(f"Sel Node: {sel_channels[0].node()}\n")
         self.te_debug.insertPlainText(f"Filename: '{filename}.'\n\n")
         self.te_debug.insertPlainText("File Contents:\n")
         self.te_debug.insertPlainText(str(jsn))
 
     def _capturePose(self):
-        '''Capture a Pose from the selected controls in the channel list'''
+        '''Capture a Pose from the selected controls in the channel list. The stored frame starts from zero'''
         sel_channels = self._selectChannels()
         anim_dict = {}
         for p in sel_channels:
             anim_dict[str(p.name())] = self._jsonFromValue(
-                hou.time(), p.eval())
+                0.0, p.eval())
         print(anim_dict)
         jsn = json.dumps(anim_dict, indent=4)
         self.te_debug.clear()
