@@ -2,6 +2,7 @@ import gzip
 import hou
 import json
 import os
+import re
 
 from PIL import Image
 from PySide2 import QtWidgets
@@ -54,12 +55,9 @@ class UI(QtWidgets.QWidget):
         self.btn_cap_pose = QtWidgets.QPushButton('Capture Pose')
         self.btn_cap_pose.clicked.connect(self._capturePose)
         self.btn_cap_pose.setFixedWidth(hou.ui.scaledSize(147))
-        self.btn_screenshot = QtWidgets.QPushButton('Screenshot')
-        self.btn_screenshot.clicked.connect(self._captureSequence)
         btn_layout = QtWidgets.QHBoxLayout()
         btn_layout.addWidget(self.btn_cap_clip)
         btn_layout.addWidget(self.btn_cap_pose)
-        btn_layout.addWidget(self.btn_screenshot)
         form_layout.addRow(QtWidgets.QLabel(), btn_layout)
 
         # Debug
@@ -73,6 +71,8 @@ The time range is offset to start at frame 0, rather than when it currently star
         frame_range = hou.playbar.selectionRange()
         if frame_range == None:
             frame_range = hou.playbar.frameRange()
+        if frame_range[0] < 0:
+            frame_range[0] = 0
         start_time = hou.frameToTime(frame_range[0])
         sel_channels = self._selectChannels()
         if len(sel_channels) == 0:
@@ -93,18 +93,14 @@ The time range is offset to start at frame 0, rather than when it currently star
                 anim_dict[str(p.name())] = self._jsonFromValue(
                     hou.frameToTime(frame_range[0])-start_time, p.eval())
         jsn = json.dumps(anim_dict, indent=4)
-        self.te_debug.clear()
-        filename = os.path.join(hou.expandString(plglobals.lib_path),
-                                "clips",
-                                self.le_cap_name.text().replace(" ", "_"))
-        self.te_debug.insertPlainText(
-            f"Storing Clip\nFrame Range: {frame_range[0]} {frame_range[1]}\n")
-        self.te_debug.insertPlainText(
-            f"Output Range: {frame_range[0] - frame_range[0]} {frame_range[1] - frame_range[0]}\n")
-        self.te_debug.insertPlainText(f"Sel Node: {sel_channels[0].node()}\n")
-        self.te_debug.insertPlainText(f"Filename: '{filename}.'\n\n")
-        self.te_debug.insertPlainText("File Contents:\n")
-        self.te_debug.insertPlainText(str(jsn))
+        clip_name = re.sub(r'\W+', '_', self.le_cap_name.text())
+        dir = os.path.join(hou.expandString(
+            plglobals.lib_path), "clips", clip_name)
+        object = sel_channels[0].node()
+        while(type(object) is not hou.ObjNode):
+            object = object.parent()
+        self._captureThumbnailSequence(frame_range, object, clip_name, dir)
+        self._writeToFile(jsn, clip_name, dir)
 
     def _capturePose(self):
         '''Capture a Pose from the selected controls in the channel list. The stored frame starts from zero'''
@@ -118,16 +114,13 @@ The time range is offset to start at frame 0, rather than when it currently star
             anim_dict[str(p.name())] = self._jsonFromValue(
                 0.0, p.eval())
         jsn = json.dumps(anim_dict, indent=4)
-        self.te_debug.clear()
-        filename = os.path.join(hou.expandString(plglobals.lib_path),
-                                "clips",
-                                self.le_cap_name.text().replace(" ", "_"))
-        self.te_debug.insertPlainText(
-            f"Storing Pose\nFrame: {hou.frame()}\n")
-        self.te_debug.insertPlainText(f"Sel Node: {sel_channels[0].node()}\n")
-        self.te_debug.insertPlainText(f"Filename: '{filename}.'\n\n")
-        self.te_debug.insertPlainText("File Contents:\n")
-        self.te_debug.insertPlainText(str(jsn))
+        pose_name = re.sub(r'\W+', '_', self.le_cap_name.text())
+        dir = os.path.join(hou.expandString(
+            plglobals.lib_path), "poses", pose_name)
+        while(type(object) is not hou.ObjNode):
+            object = object.parent()
+        self._captureThumbnailSequence(frame_range, object, clip_name, dir)
+        self._writeToFile(jsn, clip_name, dir)
 
     def _selectChannels(self):
         ''' Return a tuple of all the currently selected channels in the
@@ -142,8 +135,8 @@ The time range is offset to start at frame 0, rather than when it currently star
                  'inSlope': 0.0, 'accel': 0.0, 'accelRatio': 0,
                  'expression': 'bezier()', 'language': 'Hscript'}]
 
-    def _writeToFile(self, data, filename):
-        dir = os.path.dirname(filename)
+    def _writeToFile(self, data, name, dir):
+        filename = os.path.join(dir, name)
         if not os.path.exists(dir):
             os.mkdirs(dir)
         try:
@@ -152,7 +145,8 @@ The time range is offset to start at frame 0, rather than when it currently star
         except IOError as e:
             utils.warningDialog(f"Unable to write file.\nError: {e}")
 
-    def _readFromFile(self, filename):
+    def _readFromFile(self, name, dir):
+        filename = os.path.join(dir, name)
         try:
             with gzip.open(filename, 'rt', encoding='UTF-8') as zipfile:
                 return json.load(zipfile)
@@ -160,18 +154,17 @@ The time range is offset to start at frame 0, rather than when it currently star
             utils.warningDialog(f"Unable to read file.\nError: {e}")
             return False
 
-    def _captureSequence(self):
+    def _captureThumbnailStill(self, object, pose_name, dir):
+        filename = os.path.join(dir, hou.expandString(f"{pose_name}.jpg"))
+        self._captureThumbnail(hou.frame(), filename, object)
+
+    def _captureThumbnailSequence(self, frames, object, clip_name, dir):
         cur_frame = hou.frame()
-        object = hou.playbar.channelList().parms()[0].node()
-        if object is not None:
-            while type(object) is not hou.ObjNode:
-                object = object.parent()
-        else:
-            object = False
         img_filenames = []
-        for i in range(48):
+        for i in range(int(frames[0]), int(frames[1])):
             hou.setFrame(i)
-            filename = hou.expandString("$HOME/temp/clip.$F4.jpg")
+            filename = os.path.join(
+                dir, hou.expandString(f"{clip_name}.$F4.jpg"))
             img_filenames.append(filename)
             self._captureThumbnail(i, filename, object)
         hou.setFrame(cur_frame)
@@ -183,8 +176,6 @@ The time range is offset to start at frame 0, rather than when it currently star
         filename = os.path.basename(filename_list[0]).split(".")[0] + ".gif"
         filename = os.path.join(base_dir, filename)
         duration = (1.0/hou.fps())*1000
-        print(duration)
-        print(filename)
         for i in filename_list:
             image = Image.open(i)
             gif.append(image.convert("P", palette=Image.ADAPTIVE))
@@ -204,10 +195,10 @@ The time range is offset to start at frame 0, rather than when it currently star
         if filename is not None:
             if object is False:
                 hou.hscript(
-                    f"viewwrite -R beauty -f {frame} {frame} {camera_path} {temp}")
+                    f"viewwrite -R beauty -g 2.21 -f {frame} {frame} {camera_path} {temp}")
             else:
                 hou.hscript(
-                    f"viewwrite -v {object} -R beauty -f {frame} {frame} {camera_path} {temp}")
+                    f"viewwrite -v {object} -R beauty -g 2.21 -f {frame} {frame} {camera_path} {temp}")
 
         try:
             img = Image.open(temp)
