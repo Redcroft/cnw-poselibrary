@@ -7,10 +7,12 @@ from PySide2 import QtCore
 from PySide2.QtGui import QMovie
 
 from . import plglobals
+from . import widgets
 
 if plglobals.debug == 1:
     from importlib import reload
     reload(plglobals)
+    reload(widgets)
 
 
 class UI(QtWidgets.QWidget):
@@ -23,20 +25,23 @@ class UI(QtWidgets.QWidget):
 
     def _createUI(self):
         """ Build the UI """
+        # self.btn_refresh = QtWidgets.QPushButton('Refresh')
+        # self.btn_refresh.clicked.connect(self._refreshLibrary)
+        # main_layout.addWidget(self.btn_refresh)
+        # self.btn_clear = QtWidgets.QPushButton('Clear')
+        # self.btn_clear.clicked.connect(self._clearLibrary)
+        # main_layout.addWidget(self.btn_clear)
+        # self.lbl_mem = QtWidgets.QLabel(
+        #     f"{psutil.Process().memory_info().rss / (1024 * 1024)}")
+        # main_layout.addWidget(self.lbl_mem)
+        # self.grid_layout = QtWidgets.QGridLayout()
+        # self._refreshLibrary()
         main_layout = QtWidgets.QVBoxLayout()
-        self.btn_refresh = QtWidgets.QPushButton('Refresh')
-        self.btn_refresh.clicked.connect(self._refreshLibrary)
-        main_layout.addWidget(self.btn_refresh)
-        self.btn_clear = QtWidgets.QPushButton('Clear')
-        self.btn_clear.clicked.connect(self._clearLibrary)
-        main_layout.addWidget(self.btn_clear)
-        self.lbl_mem = QtWidgets.QLabel(
-            f"{psutil.Process().memory_info().rss / (1024 * 1024)}")
-        main_layout.addWidget(self.lbl_mem)
-        self.grid_layout = QtWidgets.QGridLayout()
-        self._refreshLibrary()
+
+        for i in range(10):
+            main_layout.addWidget(widgets.QImageThumbnail())
+
         self.setLayout(main_layout)
-        main_layout.addLayout(self.grid_layout)
 
     def _refreshLibrary(self):
         dir = hou.expandString(plglobals.lib_path)
