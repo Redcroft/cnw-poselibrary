@@ -25,23 +25,33 @@ class UI(QtWidgets.QWidget):
 
     def _createUI(self):
         """ Build the UI """
-        # self.btn_refresh = QtWidgets.QPushButton('Refresh')
-        # self.btn_refresh.clicked.connect(self._refreshLibrary)
-        # main_layout.addWidget(self.btn_refresh)
-        # self.btn_clear = QtWidgets.QPushButton('Clear')
-        # self.btn_clear.clicked.connect(self._clearLibrary)
-        # main_layout.addWidget(self.btn_clear)
-        # self.lbl_mem = QtWidgets.QLabel(
-        #     f"{psutil.Process().memory_info().rss / (1024 * 1024)}")
-        # main_layout.addWidget(self.lbl_mem)
-        # self.grid_layout = QtWidgets.QGridLayout()
-        # self._refreshLibrary()
         main_layout = QtWidgets.QVBoxLayout()
+        self.zoom = QtWidgets.QSlider(QtCore.Qt.Horizontal)
+        self.zoom.setMinimum(64)
+        self.zoom.setMaximum(384)
+        self.zoom.setValue(128)
+        self.zoom.valueChanged.connect(self._resizeBtns)
+        main_layout.addWidget(self.zoom)
 
-        for i in range(10):
-            main_layout.addWidget(widgets.QImageThumbnail())
+        self.flow = widgets.ScrollingFlowWidget()
+        main_layout.addWidget(self.flow)
+
+        for i in range(20):
+            btn = QtWidgets.QPushButton(f"This is button {i}")
+            self.flow.addWidget(btn)
+
+        self._resizeBtns()
 
         self.setLayout(main_layout)
+
+    def _resizeBtns(self):
+        count = self.flow.count()
+        for i in range(count):
+            item = self.flow.itemAt(i)
+            if item is not None:
+                widget = item.widget()
+                if widget is not None:
+                    widget.setFixedSize(self.zoom.value(), self.zoom.value())
 
     def _refreshLibrary(self):
         dir = hou.expandString(plglobals.lib_path)
