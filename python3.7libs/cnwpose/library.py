@@ -23,26 +23,58 @@ class UI(QtWidgets.QWidget):
         self.setStyleSheet("magin:5px;")
         self._createUI()
 
+    def __del__(self):
+        self._clearLibrary()
+
     def _createUI(self):
         """ Build the UI """
         main_layout = QtWidgets.QVBoxLayout()
+        self.lbl_mem = QtWidgets.QLabel()
+        self.lbl_mem.setText(
+            f"{psutil.Process().memory_info().rss / (1024 * 1024):.2f} Mb memory used")
+        main_layout.addWidget(self.lbl_mem)
+        self.btn_r = QtWidgets.QPushButton('Reload')
+        self.btn_r.clicked.connect(self._refLibrary)
+        main_layout.addWidget(self.btn_r)
+        self.btn = QtWidgets.QPushButton('Clear')
+        self.btn.clicked.connect(self._clearLibrary)
+        main_layout.addWidget(self.btn)
         self.zoom = QtWidgets.QSlider(QtCore.Qt.Horizontal)
-        self.zoom.setMinimum(64)
-        self.zoom.setMaximum(384)
-        self.zoom.setValue(128)
+        self.zoom.setMinimum(hou.ui.scaledSize(64))
+        self.zoom.setMaximum(hou.ui.scaledSize(384))
+        self.zoom.setValue(hou.ui.scaledSize(128))
         self.zoom.valueChanged.connect(self._resizeBtns)
         main_layout.addWidget(self.zoom)
 
         self.flow = widgets.ScrollingFlowWidget()
         main_layout.addWidget(self.flow)
 
-        for i in range(20):
-            btn = QtWidgets.QPushButton(f"This is button {i}")
-            self.flow.addWidget(btn)
-
-        self._resizeBtns()
-
+        self._refLibrary()
         self.setLayout(main_layout)
+
+    def _refLibrary(self):
+        self._clearLibrary()
+        lib_dir = plglobals.lib_path
+        clips = []
+        for f in ('clips', 'poses'):
+            sub_dir = os.path.join(lib_dir, f)
+            if os.path.isdir(sub_dir):
+                for i in os.listdir(sub_dir):
+                    clip_dir = os.path.join(sub_dir, i)
+                    if os.path.isdir(clip_dir):
+                        clips.append(clip_dir)
+        for i in clips:
+            name = os.path.basename(i)
+            clip = widgets.QImageThumbnail()
+            clip.setText(name)
+            gif = os.path.join(i, name + '.gif')
+            jpg = os.path.join(i, name + '.jpg')
+            if os.path.isfile(gif):
+                clip.setMovie(gif)
+            elif os.path.isfile(jpg):
+                clip.setImage(jpg)
+            self.flow.addWidget(clip)
+        self._resizeBtns()
 
     def _resizeBtns(self):
         count = self.flow.count()
@@ -51,7 +83,8 @@ class UI(QtWidgets.QWidget):
             if item is not None:
                 widget = item.widget()
                 if widget is not None:
-                    widget.setFixedSize(self.zoom.value(), self.zoom.value())
+                    widget.setFixedSize(self.zoom.value(),
+                                        self.zoom.value()+26)
 
     def _refreshLibrary(self):
         dir = hou.expandString(plglobals.lib_path)
@@ -80,23 +113,13 @@ class UI(QtWidgets.QWidget):
                     y = 0
 
     def _clearLibrary(self):
-        rows = self.grid_layout.rowCount()
-        cols = self.grid_layout.columnCount()
-        for i in range(rows*cols+1):
-            container = self.grid_layout.itemAt(0)
-            if container is not None:
-                container.setParent(None)
-                count = container.count()
-                for i in range(count):
-                    item = container.itemAt(i)
-                    if item is not None:
-                        widget = item.widget()
-                        if widget is not None:
-                            if widget.movie() is not None:
-                                widget.movie().deleteLater()
-                            if widget.pixmap() is not None:
-                                widget.pixmap().deleteLater()
-                            widget.setParent(None)
-                            widget.deleteLater()
+        count = self.flow.count()
+        for i in range(count):
+            item = self.flow.itemAt(0)
+            if item is not None:
+                widget = item.widget()
+                if widget is not None:
+                    widget.setParent(None)
+                    del widget
         self.lbl_mem.setText(
             f"{psutil.Process().memory_info().rss / (1024 * 1024):.2f} Mb memory used")

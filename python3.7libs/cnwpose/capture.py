@@ -62,8 +62,10 @@ class UI(QtWidgets.QWidget):
 
         # Debug
         self.te_debug = QtWidgets.QPlainTextEdit()
-        main_layout.addWidget(self.te_debug)
-        # main_layout.addStretch()
+        if plglobals.debug == 1:
+            main_layout.addWidget(self.te_debug)
+
+        main_layout.addStretch()
 
     def _captureClip(self):
         '''Capture Animation clip from the selected channels.

@@ -48,6 +48,7 @@ class CnwPose(QtWidgets.QWidget):
         self.tab_widget = QtWidgets.QTabWidget()
         self.tab_widget.addTab(self.capture, 'Capture')
         self.tab_widget.addTab(self.library, 'Library')
+        self.tab_widget.setCurrentIndex(1)
 
         mainLayout = QtWidgets.QVBoxLayout()
         mainLayout.addWidget(self.header)

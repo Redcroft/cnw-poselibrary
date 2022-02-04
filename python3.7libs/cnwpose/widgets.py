@@ -2,23 +2,29 @@ import hou
 import sys
 from PySide2 import QtWidgets
 from PySide2 import QtCore
+from PySide2 import QtGui
 from . import utils
 
+# rgb(185, 134, 32) - solid boder
+# rgba(185, 134, 32, 77) - fill
 
 StyleSheet = '''
-QWidget {
-    margin: 5px;
+QLabel {
+    margin: 0px;
 }
 
-QWidget:hover {
+QImageThumbnail {
+    background: rgba(0, 0, 0, 10%);
+    border: 1px solid rgb(0, 0, 0);
+    margin: 2px;
+}
+
+QImageThumbnail:hover {
     background: rgba(255, 255, 255, 45%);
 }
 
-QWidget:selected {
-    border: 1px solid rgb(185, 134, 32);
-    border-radius: 1px;
-    colorY rgb(204, 204, 204);
-    background: rgba(185, 134, 32, 77);
+QImageThumbnail:selected {
+    background: rgba(255, 192, 23, 45%);
 }
 '''
 
@@ -88,6 +94,7 @@ class FlowLayout(QtWidgets.QLayout):
 
     def doLayout(self, rect, testonly):
         left, top, right, bottom = self.getContentsMargins()
+        width = right - left
         effective = rect.adjusted(+left, +top, -right, -bottom)
         x = effective.x()
         y = effective.y()
@@ -169,34 +176,87 @@ class ScrollingFlowWidget(QtWidgets.QWidget):
         return self.flow_layout.itemAt(index)
 
 
-class QGridThumbnails(QtWidgets.QWidget):
-    def __init__(self):
-        super(QGridThumbnail, self).__init__()
-        self.setStyleSheet(hou.qt.styleSheet())
-
-        main_layout = QtWidgets.QVBoxLayout()
-        self.setLayout(main_layout)
-
-
 class QImageThumbnail(QtWidgets.QWidget):
+    label_text = ''
+    name = ''
+    path = ''
+
     def __init__(self):
         super(QImageThumbnail, self).__init__()
         self.setStyleSheet(hou.qt.styleSheet())
         self.setStyleSheet(StyleSheet)
 
-        layout = QtWidgets.QVBoxLayout()
+        layout = QtWidgets.QGridLayout()
         self.setLayout(layout)
-        self.label = QtWidgets.QLabel('Testing my custom widget')
-        layout.addWidget(self.label)
+        self.thumbnail = QtWidgets.QLabel()
+        self.thumbnail.setScaledContents(True)
+        self.label = QtWidgets.QLabel()
+        self.label.setFixedHeight(22)
+        self.label.setAlignment(QtCore.Qt.AlignCenter)
+        layout.addWidget(self.thumbnail, 0, 0)
+        layout.addWidget(self.label, 1, 0)
+        self.thumbnail.adjustSize()
         self.setStyleSheet(StyleSheet)
 
         self.setContextMenuPolicy(QtCore.Qt.CustomContextMenu)
         self.customContextMenuRequested.connect(self.right_click)
         self.installEventFilter(self)
 
+    def __del__(self):
+        self.thumbnail.clear()
+        self.thumbnail.setParent(None)
+        self.label.setParent(None)
+        self.setParent(None)
+
+    def setPath(self, path):
+        self.path = path
+        self.name = os.path.basename(path)
+
+    def setText(self, text):
+        self.label_text = text
+        self.label.setText(text)
+
+    def setMovie(self, gif):
+        self.movie = QtGui.QMovie(gif)
+        self.movie.setParent(self.thumbnail)
+        self.thumbnail.setMovie(self.movie)
+        self.movie.jumpToFrame(0)
+
+    def setImage(self, jpg):
+        self.thumbnail.setPixmap(jpg)
+
+    def resizeEvent(self, event):
+        self.formatText()
+        super(QImageThumbnail, self).resizeEvent(event)
+
+    def formatText(self):
+        width = self.label.width()
+        text = self.label_text
+        fw = QtGui.QFontMetrics(self.font()).averageCharWidth()
+        # fw = fm.averageCharWidth()
+        num = int(width / fw)
+        if len(text) > num:
+            self.label.setText(self.label_text[:num] + '...')
+        else:
+            self.label.setText(self.label_text)
+
+    def paintEvent(self, event):
+        option = QtWidgets.QStyleOption()
+        option.initFrom(self)
+        painter = QtGui.QPainter(self)
+        self.style().drawPrimitive(QtWidgets.QStyle.PE_Widget, option, painter, self)
+
     def eventFilter(self, obj, event):
         if event.type() == QtCore.QEvent.MouseButtonPress:
-            print(f"{obj} clicked")
+            print(self.label_text)
+        if event.type() == QtCore.QEvent.HoverEnter:
+            if self.movie:
+                self.movie.start()
+            self.label.setStyleSheet('color: black')
+        if event.type() == QtCore.QEvent.HoverLeave:
+            self.movie.jumpToFrame(0)
+            self.movie.stop()
+            self.label.setStyleSheet('color: rgb(204, 204, 204)')
         return QtWidgets.QWidget.eventFilter(self, obj, event)
 
     def right_click(self, pos):
