@@ -1,12 +1,19 @@
 import hou
+import os
 import sys
 from PySide2 import QtWidgets
 from PySide2 import QtCore
 from PySide2 import QtGui
 from . import utils
+from . import plglobals
 
 # rgb(185, 134, 32) - solid boder
 # rgba(185, 134, 32, 77) - fill
+
+if plglobals.debug == 1:
+    from importlib import reload
+    reload(plglobals)
+
 
 StyleSheet = '''
 QLabel {
@@ -177,9 +184,11 @@ class ScrollingFlowWidget(QtWidgets.QWidget):
 
 
 class QImageThumbnail(QtWidgets.QWidget):
+    clicked = QtCore.Signal(QtCore.Qt.MouseButton)
     label_text = ''
     name = ''
     path = ''
+    clip_type = ''
 
     def __init__(self):
         super(QImageThumbnail, self).__init__()
@@ -208,12 +217,18 @@ class QImageThumbnail(QtWidgets.QWidget):
         self.label.setParent(None)
         self.setParent(None)
 
+    def name(self):
+        return self.name
+
     def setPath(self, path):
         self.path = path
         self.name = os.path.basename(path)
 
+    def setType(self, clip_type):
+        self.clip_type = clip_type
+
     def setText(self, text):
-        self.label_text = text
+        self.label_text = text.replace("_", " ")
         self.label.setText(text)
 
     def setMovie(self, gif):
@@ -246,9 +261,13 @@ class QImageThumbnail(QtWidgets.QWidget):
         painter = QtGui.QPainter(self)
         self.style().drawPrimitive(QtWidgets.QStyle.PE_Widget, option, painter, self)
 
+    def mousePressEvent(self, event):
+        plglobals.clip['name'] = self.name
+        plglobals.clip['dir'] = self.path
+        plglobals.clip['type'] = self.clip_type
+        self.clicked.emit(event.button())
+
     def eventFilter(self, obj, event):
-        if event.type() == QtCore.QEvent.MouseButtonPress:
-            print(self.label_text)
         if event.type() == QtCore.QEvent.HoverEnter:
             if self.movie:
                 self.movie.start()
@@ -263,9 +282,10 @@ class QImageThumbnail(QtWidgets.QWidget):
         menu = QtWidgets.QMenu()
         menu.setStyleSheet(hou.qt.styleSheet())
 
-        hello_option = menu.addAction('Hello World')
-        test_option = menu.addAction('Testing my custom widget')
-        new_option = menu.addAction('Yes')
+        delete_option = menu.addAction('Delete')
+        rename_option = menu.addAction('Rename')
+
+        delete_option.triggered.connect(self._del_clip)
 
         hello_option.triggered.connect(
             lambda: self.label.setText('Hello World'))

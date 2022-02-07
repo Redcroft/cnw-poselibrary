@@ -94,15 +94,14 @@ The time range is offset to start at frame 0, rather than when it currently star
             else:
                 anim_dict[str(p.name())] = self._jsonFromValue(
                     hou.frameToTime(frame_range[0])-start_time, p.eval())
-        jsn = json.dumps(anim_dict, indent=4)
         clip_name = re.sub(r'\W+', '_', self.le_cap_name.text())
         dir = os.path.join(hou.expandString(
-            plglobals.lib_path), "clips", clip_name)
+            plglobals.lib_path), "clip", clip_name)
         object = sel_channels[0].node()
         while(type(object) is not hou.ObjNode):
             object = object.parent()
         self._captureThumbnailSequence(frame_range, object, clip_name, dir)
-        self._writeToFile(jsn, clip_name, dir)
+        self._writeToFile(anim_dict, clip_name, dir)
 
     def _capturePose(self):
         '''Capture a Pose from the selected controls in the channel list. The stored frame starts from zero'''
@@ -115,14 +114,13 @@ The time range is offset to start at frame 0, rather than when it currently star
         for p in sel_channels:
             anim_dict[str(p.name())] = self._jsonFromValue(
                 0.0, p.eval())
-        jsn = json.dumps(anim_dict, indent=4)
         pose_name = re.sub(r'\W+', '_', self.le_cap_name.text())
         dir = os.path.join(hou.expandString(
             plglobals.lib_path), "poses", pose_name)
         while(type(object) is not hou.ObjNode):
             object = object.parent()
         self._captureThumbnailSequence(frame_range, object, clip_name, dir)
-        self._writeToFile(jsn, clip_name, dir)
+        self._writeToFile(anim_dict, clip_name, dir)
 
     def _selectChannels(self):
         ''' Return a tuple of all the currently selected channels in the

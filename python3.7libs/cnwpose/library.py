@@ -1,3 +1,4 @@
+import collections
 import hou
 import os
 import psutil
@@ -7,11 +8,13 @@ from PySide2 import QtCore
 from PySide2.QtGui import QMovie
 
 from . import plglobals
+from . import sidebar
 from . import widgets
 
 if plglobals.debug == 1:
     from importlib import reload
     reload(plglobals)
+    reload(sidebar)
     reload(widgets)
 
 
@@ -28,53 +31,81 @@ class UI(QtWidgets.QWidget):
 
     def _createUI(self):
         """ Build the UI """
-        main_layout = QtWidgets.QVBoxLayout()
+        main_layout = QtWidgets.QHBoxLayout()
+        lib_widget = QtWidgets.QWidget()
+        lib_layout = QtWidgets.QVBoxLayout(lib_widget)
+        main_layout.addLayout(lib_layout)
+
+        # Splitter
+        splitter = QtWidgets.QSplitter(QtCore.Qt.Horizontal)
+        main_layout.addWidget(splitter)
+        splitter.addWidget(lib_widget)
+        self.sidebar = sidebar.UI()
+        splitter.addWidget(self.sidebar)
+
+        splitter.setSizes([hou.ui.scaledSize(400),
+                           hou.ui.scaledSize(10)])
+
+        # Library Side
         self.lbl_mem = QtWidgets.QLabel()
         self.lbl_mem.setText(
             f"{psutil.Process().memory_info().rss / (1024 * 1024):.2f} Mb memory used")
-        main_layout.addWidget(self.lbl_mem)
+        lib_layout.addWidget(self.lbl_mem)
         self.btn_r = QtWidgets.QPushButton('Reload')
-        self.btn_r.clicked.connect(self._refLibrary)
-        main_layout.addWidget(self.btn_r)
+        self.btn_r.clicked.connect(self.refreshLibrary)
+        lib_layout.addWidget(self.btn_r)
         self.btn = QtWidgets.QPushButton('Clear')
         self.btn.clicked.connect(self._clearLibrary)
-        main_layout.addWidget(self.btn)
+        lib_layout.addWidget(self.btn)
+
+        # Thumbnails
+        self.flow = widgets.ScrollingFlowWidget()
+        lib_layout.addWidget(self.flow)
+
+        # Zoom widget
         self.zoom = QtWidgets.QSlider(QtCore.Qt.Horizontal)
         self.zoom.setMinimum(hou.ui.scaledSize(64))
         self.zoom.setMaximum(hou.ui.scaledSize(384))
         self.zoom.setValue(hou.ui.scaledSize(128))
         self.zoom.valueChanged.connect(self._resizeBtns)
-        main_layout.addWidget(self.zoom)
+        lib_layout.addWidget(self.zoom)
 
-        self.flow = widgets.ScrollingFlowWidget()
-        main_layout.addWidget(self.flow)
-
-        self._refLibrary()
+        self.refreshLibrary()
         self.setLayout(main_layout)
 
-    def _refLibrary(self):
+    def refreshLibrary(self):
         self._clearLibrary()
         lib_dir = plglobals.lib_path
         clips = []
-        for f in ('clips', 'poses'):
+        for f in ('clip', 'poses'):
             sub_dir = os.path.join(lib_dir, f)
             if os.path.isdir(sub_dir):
                 for i in os.listdir(sub_dir):
                     clip_dir = os.path.join(sub_dir, i)
                     if os.path.isdir(clip_dir):
-                        clips.append(clip_dir)
+                        dict = {"name": i,
+                                "dir": clip_dir,
+                                "type": f}
+                        clips.append(dict)
+        clips = sorted(clips, key=lambda c: c['name'].lower())
         for i in clips:
-            name = os.path.basename(i)
             clip = widgets.QImageThumbnail()
-            clip.setText(name)
-            gif = os.path.join(i, name + '.gif')
-            jpg = os.path.join(i, name + '.jpg')
+            clip.setText(i['name'])
+            clip.setPath(i['dir'])
+            clip.setType(i['type'])
+            self.flow.addWidget(clip)
+            clip.clicked.connect(self.getClip)
+
+            gif = os.path.join(i['dir'], i['name'] + '.gif')
+            jpg = os.path.join(i['dir'], i['name'] + '.jpg')
             if os.path.isfile(gif):
                 clip.setMovie(gif)
             elif os.path.isfile(jpg):
                 clip.setImage(jpg)
-            self.flow.addWidget(clip)
         self._resizeBtns()
+
+    def getClip(self):
+        self.sidebar.updateClip()
 
     def _resizeBtns(self):
         count = self.flow.count()
@@ -85,32 +116,6 @@ class UI(QtWidgets.QWidget):
                 if widget is not None:
                     widget.setFixedSize(self.zoom.value(),
                                         self.zoom.value()+26)
-
-    def _refreshLibrary(self):
-        dir = hou.expandString(plglobals.lib_path)
-        cols, x, y = 3, 0, 0
-        clips = os.path.join(dir, "clips")
-        items = os.listdir(clips)
-        self._clearLibrary()
-        for i in items:
-            filename = os.path.join(clips, i, i)
-            if os.path.exists(filename):
-                container = QtWidgets.QVBoxLayout()
-                thumbnail = QtWidgets.QLabel()
-                thumbnail.setMovie(QMovie("{}.gif".format(filename)))
-                thumbnail.movie().start()
-                thumbnail.setScaledContents(True)
-                thumbnail.setFixedSize(192, 192)
-                label = QtWidgets.QLabel(i)
-                label.setFixedWidth(192)
-                label.setAlignment(QtCore.Qt.AlignCenter)
-                container.addWidget(thumbnail)
-                container.addWidget(label)
-                self.grid_layout.addLayout(container, x, y)
-                y += 1
-                if y > cols:
-                    x += 1
-                    y = 0
 
     def _clearLibrary(self):
         count = self.flow.count()
