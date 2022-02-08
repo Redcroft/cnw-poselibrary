@@ -76,7 +76,7 @@ The time range is offset to start at frame 0, rather than when it currently star
         if frame_range[0] < 0:
             frame_range[0] = 0
         start_time = hou.frameToTime(frame_range[0])
-        sel_channels = self._selectChannels()
+        sel_channels = utils.selectChannels()
         if len(sel_channels) == 0:
             utils.warningDialog(
                 'No channels are available in the Channel List')
@@ -105,7 +105,7 @@ The time range is offset to start at frame 0, rather than when it currently star
 
     def _capturePose(self):
         '''Capture a Pose from the selected controls in the channel list. The stored frame starts from zero'''
-        sel_channels = self._selectChannels()
+        sel_channels = utils.selectChannels()
         if len(sel_channels) == 0:
             utils.warningDialog(
                 'No channels are avaliable in the Channel List')
@@ -116,19 +116,12 @@ The time range is offset to start at frame 0, rather than when it currently star
                 0.0, p.eval())
         pose_name = re.sub(r'\W+', '_', self.le_cap_name.text())
         dir = os.path.join(hou.expandString(
-            plglobals.lib_path), "poses", pose_name)
+            plglobals.lib_path), "pose", pose_name)
+        object = sel_channels[0].node()
         while(type(object) is not hou.ObjNode):
             object = object.parent()
-        self._captureThumbnailSequence(frame_range, object, clip_name, dir)
-        self._writeToFile(anim_dict, clip_name, dir)
-
-    def _selectChannels(self):
-        ''' Return a tuple of all the currently selected channels in the
-        Channel List'''
-        selection = hou.playbar.channelList().selected()
-        if len(selection) == 0:
-            selection = hou.playbar.channelList().parms()
-        return selection
+        self._captureThumbnailStill(object, pose_name, dir)
+        self._writeToFile(anim_dict, pose_name, dir)
 
     def _jsonFromValue(self, time, value):
         return [{'time': time, 'value': value, 'slope': 0.0,
@@ -187,10 +180,13 @@ The time range is offset to start at frame 0, rather than when it currently star
         cur_desktop = hou.ui.curDesktop()
         desktop = cur_desktop.name()
         panetab = cur_desktop.paneTabOfType(hou.paneTabType.SceneViewer).name()
+        refPlane = cur_desktop.paneTabOfType(
+            hou.paneTabType.SceneViewer).referencePlane()
+        grid = refPlane.isVisible()
+        refPlane.setIsVisible(False)
         persp = cur_desktop.paneTabOfType(
             hou.paneTabType.SceneViewer).curViewport().name()
         camera_path = f"{desktop}.{panetab}.world.{persp}"
-
         temp = os.path.join(os.path.dirname(filename), "temp.jpg")
         if filename is not None:
             if object is False:
@@ -212,3 +208,4 @@ The time range is offset to start at frame 0, rather than when it currently star
             os.remove(temp)
         except Exception as e:
             utils.warningDialog(f"Unable to save thumbnail\nError: {e}")
+        refPlane.setIsVisible(grid)

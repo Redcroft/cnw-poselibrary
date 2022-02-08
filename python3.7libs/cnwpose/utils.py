@@ -19,3 +19,10 @@ def warningDialog(message, true_button='OK', false_button='Cancel',
         default_choice=def_choice,
         close_choice=1)
     return True if warning == 0 else False
+
+
+def selectChannels():
+    selection = hou.playbar.channelList().selected()
+    if len(selection) == 0:
+        selection = hou.playbar.channelList().parms()
+    return selection

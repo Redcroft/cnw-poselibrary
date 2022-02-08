@@ -77,7 +77,7 @@ class UI(QtWidgets.QWidget):
         self._clearLibrary()
         lib_dir = plglobals.lib_path
         clips = []
-        for f in ('clip', 'poses'):
+        for f in ('clip', 'pose'):
             sub_dir = os.path.join(lib_dir, f)
             if os.path.isdir(sub_dir):
                 for i in os.listdir(sub_dir):

@@ -189,6 +189,7 @@ class QImageThumbnail(QtWidgets.QWidget):
     name = ''
     path = ''
     clip_type = ''
+    thumb_type = ''
 
     def __init__(self):
         super(QImageThumbnail, self).__init__()
@@ -232,12 +233,14 @@ class QImageThumbnail(QtWidgets.QWidget):
         self.label.setText(text)
 
     def setMovie(self, gif):
+        self.thumb_type = 'movie'
         self.movie = QtGui.QMovie(gif)
         self.movie.setParent(self.thumbnail)
         self.thumbnail.setMovie(self.movie)
         self.movie.jumpToFrame(0)
 
     def setImage(self, jpg):
+        self.thumb_type = 'pixmap'
         self.thumbnail.setPixmap(jpg)
 
     def resizeEvent(self, event):
@@ -269,12 +272,13 @@ class QImageThumbnail(QtWidgets.QWidget):
 
     def eventFilter(self, obj, event):
         if event.type() == QtCore.QEvent.HoverEnter:
-            if self.movie:
+            if self.thumb_type == 'movie':
                 self.movie.start()
             self.label.setStyleSheet('color: black')
         if event.type() == QtCore.QEvent.HoverLeave:
-            self.movie.jumpToFrame(0)
-            self.movie.stop()
+            if self.thumb_type == 'movie':
+                self.movie.jumpToFrame(0)
+                self.movie.stop()
             self.label.setStyleSheet('color: rgb(204, 204, 204)')
         return QtWidgets.QWidget.eventFilter(self, obj, event)
 

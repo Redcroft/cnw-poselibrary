@@ -6,13 +6,17 @@ import sys
 from PySide2 import QtWidgets
 from PySide2 import QtGui
 from . import plglobals
+from . import utils
 
 if plglobals.debug == 1:
     from importlib import reload
     reload(plglobals)
+    reload(utils)
 
 
 class UI(QtWidgets.QWidget):
+    json_data = None
+
     def __init__(self, parent=None):
         super(UI, self).__init__()
         self.setStyleSheet(hou.qt.styleSheet())
@@ -64,6 +68,7 @@ class UI(QtWidgets.QWidget):
         main_layout.addWidget(self.combo)
         self.combo.setEnabled(False)
         self.btn_apply = QtWidgets.QPushButton('Apply')
+        self.btn_apply.clicked.connect(self.applyJSON)
         main_layout.addWidget(self.btn_apply)
         if plglobals.debug == 1:
             self.te_debug = QtWidgets.QPlainTextEdit()
@@ -77,20 +82,25 @@ class UI(QtWidgets.QWidget):
     def getJSON(self):
         filename = os.path.join(plglobals.clip['dir'], plglobals.clip['name'])
         with gzip.open(filename, 'rt', encoding='UTF-8') as zipfile:
-            data = json.load(zipfile)
-        self.getFrameRange(data)
+            self.json_data = json.load(zipfile)
         if plglobals.debug == 1:
             self.te_debug.setPlainText('')
             self.te_debug.insertPlainText(
-                f"{plglobals.clip['name']}\n{plglobals.clip['dir']}\n{data}")
+                f"{plglobals.clip['name']}\n{plglobals.clip['dir']}\n{self.json_data}")
 
-    def getFrameRange(self, data):
-        print(data)
+    def getFrameRange(self):
+        end = 0.0
+        if self.json_data != None:
+            for parm in self.json_data:
+                for k in self.json_data[parm]:
+                    end = max(end, k['time'])
+        return end
 
     def setInfo(self):
         self.lbl_name.setText(
             plglobals.clip['name'].capitalize().replace("_", " "))
         self.lbl_type.setText(plglobals.clip['type'].capitalize())
+        self.lbl_range.setText(f"0.0 - {self.getFrameRange()}")
 
     def setThumbnail(self):
         self.thumb.clear()
@@ -105,3 +115,29 @@ class UI(QtWidgets.QWidget):
         elif os.path.isfile(jpg):
             self.pixmap = QtGui.QPixmap(jpg)
             self.thumb.setPixmap(self.pixmap)
+
+    def _selectChannels(self):
+        selection = hou.playbar.channelList().selected()
+        if len(selection) == 0:
+            selection = hou.playbar.channelList().parms()
+        return selection
+
+    def applyJSON(self):
+        if self.json_data == None:
+            utils.warningDialog("No Clip/Pose Data")
+            return False
+        sel = utils.selectChannels()
+        if len(sel) == 0:
+            sel = hou.selectedNodes()[0].parms()
+        if len(sel) == 0:
+            utils.warningDialog("Nothing Selected")
+            return False
+        time = hou.frameToTime(hou.frame())
+        for p, v in self.json_data.items():
+            for c in sel:
+                if c.name() == p:
+                    for k in v:
+                        frame = hou.Keyframe()
+                        frame.fromJSON(k)
+                        frame.setTime(frame.time() + time)
+                        c.setKeyframe(frame)
