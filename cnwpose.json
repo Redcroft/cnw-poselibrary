@@ -1,0 +1,7 @@
+{
+	"env" : [
+		{
+			"HOUDINI_PATH" : "/home/redsith/houdini-plugins/cnwpose"
+		}
+	]
+}
