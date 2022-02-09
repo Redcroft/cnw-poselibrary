@@ -16,6 +16,7 @@ if plglobals.debug == 1:
 
 class UI(QtWidgets.QWidget):
     json_data = None
+    scale_tog = 0
 
     def __init__(self, parent=None):
         super(UI, self).__init__()
@@ -86,7 +87,7 @@ class UI(QtWidgets.QWidget):
         self.combo.addItem('Replace')
         self.combo.addItem('Replace All')
         form_settings.addRow(QtWidgets.QLabel('Insertion Method'), self.combo)
-        self.combo.setEnabled(False)
+        # self.combo.setEnabled(False)
         self.btn_apply = QtWidgets.QPushButton('Apply')
         self.btn_apply.clicked.connect(self.applyJSON)
         form_settings.addRow(QtWidgets.QLabel(
@@ -112,13 +113,15 @@ class UI(QtWidgets.QWidget):
             self.te_debug.setPlainText('')
 
     def _scaleChanged(self):
-        if self.scale.value() > 85 and self.scale.value() < 115:
+        if self.scale.value() > 85 and self.scale.value() < 115 and self.scale_tog == 1:
             self.scale.setValue(100)
             self.scale.setSliderPosition(100)
         self.if_scale.setValue(self.scale.value()/100.0)
         self._setOutLength()
+        self.scale_tog = 1
 
     def _ifScaleChanged(self):
+        self.scale_tog = 0
         if self.if_scale.value() < 0.0:
             self.if_scale.setValue(0.0)
         self.scale.setValue(self.if_scale.value()*100.0)
@@ -126,7 +129,7 @@ class UI(QtWidgets.QWidget):
 
     def _setOutLength(self):
         mult = self.scale.value()
-        val = hou.timeToFrame(self.getTimeLength() * (mult / 100.0))
+        val = hou.timeToFrame(self.getTimeLength() / (mult / 100.0))
         self.lbl_length_out.setText(str(val))
         try:
             self.movie.setSpeed(mult)
@@ -195,26 +198,34 @@ class UI(QtWidgets.QWidget):
                 if len(sel) == 0:
                     utils.warningDialog("Nothing Selected")
                     return False
+            frame = hou.frame()
+            time = hou.frameToTime(hou.frame())
+            length = self.getTimeLength()
+            mult = max(self.if_scale.value(), 0.01)
+            length = hou.timeToFrame(length * mult)
             method = self.combo.currentText()
+            jsn = self.json_data
             if method == "Insert":
-                # TODO: keyframesRefit(refit, refit_tol, refit_preserve_extrema,
-                # refit_bezier, resample, resample_rate, resample_tol,
-                # range, range_start, range_end, bake_chop)
-                pass
+                for c in sel:
+                    c_frames = c.keyframesAfter(frame)
+                    for k in c_frames:
+                        c.deleteKeyframeAtFrame(k.frame())
+                        k.setFrame(k.frame() + length)
+                    c.setKeyframes(c_frames)
             elif method == "Merge":
-                # TODO: take keyframes and add the current value before applying,
+                # TODO: take keyframes and add the current value before applying
                 # also remove all keyframes in place
-                pass
+                utils.warningDialog('Merge is not implemented yet')
+                return False
             elif method == "Replace":
                 # TODO: Remove all overlapping keyframes
-                pass
+                utils.warningDialog('Replace is not implemented yet')
+                return False
             elif method == "Replace All":
                 # TODO: Remove all keyframes first
-                pass
-            print(method)
-            time = hou.frameToTime(hou.frame())
-            mult = self.if_scale.value()
-            for p, v in self.json_data.items():
+                utils.warningDialog('Replace All is not implemented yet')
+                return False
+            for p, v in jsn.items():
                 for c in sel:
                     if c.name() == p:
                         for k in v:
@@ -223,4 +234,4 @@ class UI(QtWidgets.QWidget):
                             frame.setTime((frame.time() * mult) + time)
                             c.setKeyframe(frame)
         except Exception as e:
-            self.lbl_debug.setText(f"Error:\n{e}")
+            self.te_debug.setPlainText(f"Error:\n{e}")

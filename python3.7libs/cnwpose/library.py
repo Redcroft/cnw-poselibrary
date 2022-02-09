@@ -51,12 +51,14 @@ class UI(QtWidgets.QWidget):
         self.lbl_mem.setText(
             f"{psutil.Process().memory_info().rss / (1024 * 1024):.2f} Mb memory used")
         lib_layout.addWidget(self.lbl_mem)
+        btn_layout = QtWidgets.QHBoxLayout()
+        lib_layout.addLayout(btn_layout)
         self.btn_r = QtWidgets.QPushButton('Reload')
         self.btn_r.clicked.connect(self.refreshLibrary)
-        lib_layout.addWidget(self.btn_r)
+        btn_layout.addWidget(self.btn_r)
         self.btn = QtWidgets.QPushButton('Clear')
         self.btn.clicked.connect(self._clearLibrary)
-        lib_layout.addWidget(self.btn)
+        btn_layout.addWidget(self.btn)
 
         # Thumbnails
         self.flow = widgets.ScrollingFlowWidget()
