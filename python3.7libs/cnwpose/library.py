@@ -118,6 +118,7 @@ class UI(QtWidgets.QWidget):
                                         self.zoom.value()+26)
 
     def _clearLibrary(self):
+        self.sidebar._clear()
         count = self.flow.count()
         for i in range(count):
             item = self.flow.itemAt(0)

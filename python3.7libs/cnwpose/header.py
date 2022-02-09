@@ -13,8 +13,8 @@ class UI(QtWidgets.QWidget):
 
     def __init__(self, parent=None):
         super(UI, self).__init__()
-        self.setFixedHeight(hou.ui.scaledSize(80))
-
+        # self.setFixedHeight(hou.ui.scaledSize(80))
+        self.setStyleSheet(hou.qt.styleSheet())
         self._createUI()
 
     def _createUI(self):
