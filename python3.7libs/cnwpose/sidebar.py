@@ -25,8 +25,11 @@ class UI(QtWidgets.QWidget):
         self._createUI()
 
     def __del__(self):
-        self.movie.setParent(None)
-        del self.movie
+        try:
+            self.movie.setParent(None)
+            del self.movie
+        except AttributeError:
+            pass
 
     def _createUI(self):
         '''
@@ -50,22 +53,22 @@ class UI(QtWidgets.QWidget):
         main_layout.addLayout(thumb_layout)
         main_layout.addSpacerItem(spacer)
 
+        # Form
+        form_layout = QtWidgets.QFormLayout()
+
         # Info
-        info_layout = QtWidgets.QFormLayout()
         self.lbl_name = QtWidgets.QLabel()
-        info_layout.addRow(QtWidgets.QLabel('Name'), self.lbl_name)
+        form_layout.addRow(QtWidgets.QLabel('Name'), self.lbl_name)
         self.lbl_type = QtWidgets.QLabel()
-        info_layout.addRow(QtWidgets.QLabel('Type'), self.lbl_type)
+        form_layout.addRow(QtWidgets.QLabel('Type'), self.lbl_type)
         self.lbl_length = QtWidgets.QLabel()
         self.lbl_length_out = QtWidgets.QLabel()
-        info_layout.addRow(QtWidgets.QLabel('Clip Length'), self.lbl_length)
-        info_layout.addRow(QtWidgets.QLabel(
+        form_layout.addRow(QtWidgets.QLabel('Clip Length'), self.lbl_length)
+        form_layout.addRow(QtWidgets.QLabel(
             'Output Length'), self.lbl_length_out)
-        main_layout.addLayout(info_layout)
+        main_layout.addLayout(form_layout)
 
         # Settings
-        form_settings = QtWidgets.QFormLayout()
-        main_layout.addLayout(form_settings)
         self.scale = QtWidgets.QSlider(QtCore.Qt.Horizontal)
         self.scale.setMinimum(0)
         self.scale.setMaximum(400)
@@ -80,17 +83,17 @@ class UI(QtWidgets.QWidget):
         scale_layout = QtWidgets.QHBoxLayout()
         scale_layout.addWidget(self.if_scale)
         scale_layout.addWidget(self.scale)
-        form_settings.addRow(QtWidgets.QLabel('Time Scale'), scale_layout)
+        form_layout.addRow(QtWidgets.QLabel('Time Scale'), scale_layout)
         self.combo = QtWidgets.QComboBox()
         self.combo.addItem('Insert')
         self.combo.addItem('Merge')
         self.combo.addItem('Replace')
         self.combo.addItem('Replace All')
-        form_settings.addRow(QtWidgets.QLabel('Insertion Method'), self.combo)
+        form_layout.addRow(QtWidgets.QLabel('Insertion Method'), self.combo)
         # self.combo.setEnabled(False)
         self.btn_apply = QtWidgets.QPushButton('Apply')
         self.btn_apply.clicked.connect(self.applyJSON)
-        form_settings.addRow(QtWidgets.QLabel(
+        form_layout.addRow(QtWidgets.QLabel(
             ''), self.btn_apply)
         # main_layout.addWidget(self.btn_apply)
         if plglobals.debug == 1:
@@ -128,7 +131,7 @@ class UI(QtWidgets.QWidget):
         self._setOutLength()
 
     def _setOutLength(self):
-        mult = self.scale.value()
+        mult = max(self.scale.value(), 1)
         val = hou.timeToFrame(self.getTimeLength() / (mult / 100.0))
         self.lbl_length_out.setText(str(val))
         try:
@@ -188,50 +191,45 @@ class UI(QtWidgets.QWidget):
         return selection
 
     def applyJSON(self):
-        try:
-            if self.json_data == None:
-                utils.warningDialog("No Clip/Pose Data")
-                return False
-            sel = utils.selectChannels()
-            if len(sel) == 0:
-                sel = hou.selectedNodes()[0].parms()
-                if len(sel) == 0:
-                    utils.warningDialog("Nothing Selected")
-                    return False
-            frame = hou.frame()
-            time = hou.frameToTime(hou.frame())
-            length = self.getTimeLength()
-            mult = max(self.if_scale.value(), 0.01)
-            length = hou.timeToFrame(length * mult)
-            method = self.combo.currentText()
-            jsn = self.json_data
-            if method == "Insert":
-                for c in sel:
-                    c_frames = c.keyframesAfter(frame)
-                    for k in c_frames:
-                        c.deleteKeyframeAtFrame(k.frame())
-                        k.setFrame(k.frame() + length)
-                    c.setKeyframes(c_frames)
-            elif method == "Merge":
-                # TODO: take keyframes and add the current value before applying
-                # also remove all keyframes in place
-                utils.warningDialog('Merge is not implemented yet')
-                return False
-            elif method == "Replace":
-                # TODO: Remove all overlapping keyframes
-                utils.warningDialog('Replace is not implemented yet')
-                return False
-            elif method == "Replace All":
-                # TODO: Remove all keyframes first
-                utils.warningDialog('Replace All is not implemented yet')
-                return False
-            for p, v in jsn.items():
-                for c in sel:
-                    if c.name() == p:
-                        for k in v:
-                            frame = hou.Keyframe()
-                            frame.fromJSON(k)
-                            frame.setTime((frame.time() * mult) + time)
-                            c.setKeyframe(frame)
-        except Exception as e:
-            self.te_debug.setPlainText(f"Error:\n{e}")
+        if self.json_data == None:
+            utils.warningDialog("No Clip/Pose Data")
+            return False
+        sel = utils.selectChannels()
+        if len(sel) == 0:
+            utils.warningDialog("Nothing Selected")
+            return False
+        frame = hou.frame()
+        time = hou.frameToTime(hou.frame())
+        length = self.getTimeLength()
+        mult = max(self.if_scale.value(), 0.01)
+        length = hou.timeToFrame(length * mult)
+        method = self.combo.currentText()
+        jsn = self.json_data
+        if method == "Insert":
+            for c in sel:
+                c_frames = c.keyframesAfter(frame)
+                for k in c_frames:
+                    c.deleteKeyframeAtFrame(k.frame())
+                    k.setFrame(k.frame() + length)
+                c.setKeyframes(c_frames)
+        elif method == "Merge":
+            # TODO: take keyframes and add the current value before applying
+            # also remove all keyframes in place
+            utils.warningDialog('Merge is not implemented yet')
+            return False
+        elif method == "Replace":
+            # TODO: Remove all overlapping keyframes
+            utils.warningDialog('Replace is not implemented yet')
+            return False
+        elif method == "Replace All":
+            # TODO: Remove all keyframes first
+            utils.warningDialog('Replace All is not implemented yet')
+            return False
+        for p, v in jsn.items():
+            for c in sel:
+                if c.name() == p:
+                    for k in v:
+                        frame = hou.Keyframe()
+                        frame.fromJSON(k)
+                        frame.setTime((frame.time() * mult) + time)
+                        c.setKeyframe(frame)

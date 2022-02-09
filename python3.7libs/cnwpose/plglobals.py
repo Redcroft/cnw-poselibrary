@@ -9,4 +9,5 @@ global clip
 clip = {"name": '', "dir": '', "type": ''}
 
 # User Variables
-CAP_HELP_TEXT = '''Select the channels in the Animation Editor Channel List.Select the Time Range in the timeline.'''
+CAP_HELP_TEXT = '''Select the channels in the Animation Editor Channel List. \
+Select the Time Range in the timeline.'''

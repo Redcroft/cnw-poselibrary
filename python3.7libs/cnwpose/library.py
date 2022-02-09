@@ -47,10 +47,11 @@ class UI(QtWidgets.QWidget):
                            hou.ui.scaledSize(10)])
 
         # Library Side
-        self.lbl_mem = QtWidgets.QLabel()
-        self.lbl_mem.setText(
-            f"{psutil.Process().memory_info().rss / (1024 * 1024):.2f} Mb memory used")
-        lib_layout.addWidget(self.lbl_mem)
+        if plglobals.debug == 1:
+            self.lbl_mem = QtWidgets.QLabel()
+            self.lbl_mem.setText(
+                f"{psutil.Process().memory_info().rss / (1024 * 1024):.2f} Mb memory used")
+            lib_layout.addWidget(self.lbl_mem)
         btn_layout = QtWidgets.QHBoxLayout()
         lib_layout.addLayout(btn_layout)
         self.btn_r = QtWidgets.QPushButton('Reload')
@@ -77,34 +78,37 @@ class UI(QtWidgets.QWidget):
 
     def refreshLibrary(self):
         self._clearLibrary()
-        lib_dir = plglobals.lib_path
-        clips = []
-        for f in ('clip', 'pose'):
-            sub_dir = os.path.join(lib_dir, f)
-            if os.path.isdir(sub_dir):
-                for i in os.listdir(sub_dir):
-                    clip_dir = os.path.join(sub_dir, i)
-                    if os.path.isdir(clip_dir):
-                        dict = {"name": i,
-                                "dir": clip_dir,
-                                "type": f}
-                        clips.append(dict)
-        clips = sorted(clips, key=lambda c: c['name'].lower())
-        for i in clips:
-            clip = widgets.QImageThumbnail()
-            clip.setText(i['name'])
-            clip.setPath(i['dir'])
-            clip.setType(i['type'])
-            self.flow.addWidget(clip)
-            clip.clicked.connect(self.getClip)
-
-            gif = os.path.join(i['dir'], i['name'] + '.gif')
-            jpg = os.path.join(i['dir'], i['name'] + '.jpg')
-            if os.path.isfile(gif):
-                clip.setMovie(gif)
-            elif os.path.isfile(jpg):
-                clip.setImage(jpg)
-        self._resizeBtns()
+        try:
+            lib_dir = plglobals.lib_path
+            clips = []
+            for f in ('clip', 'pose'):
+                sub_dir = os.path.join(lib_dir, f)
+                if os.path.isdir(sub_dir):
+                    for i in os.listdir(sub_dir):
+                        clip_dir = os.path.join(sub_dir, i)
+                        if os.path.isdir(clip_dir):
+                            dict = {"name": i,
+                                    "dir": clip_dir,
+                                    "type": f}
+                            clips.append(dict)
+                            clips = sorted(
+                                clips, key=lambda c: c['name'].lower())
+            for i in clips:
+                clip = widgets.QImageThumbnail()
+                clip.setText(i['name'])
+                clip.setPath(i['dir'])
+                clip.setType(i['type'])
+                self.flow.addWidget(clip)
+                clip.clicked.connect(self.getClip)
+                gif = os.path.join(i['dir'], i['name'] + '.gif')
+                jpg = os.path.join(i['dir'], i['name'] + '.jpg')
+                if os.path.isfile(gif):
+                    clip.setMovie(gif)
+                elif os.path.isfile(jpg):
+                    clip.setImage(jpg)
+                    self._resizeBtns()
+        except Exception as e:
+            print(e)
 
     def getClip(self):
         self.sidebar.updateClip()
@@ -129,5 +133,6 @@ class UI(QtWidgets.QWidget):
                 if widget is not None:
                     widget.setParent(None)
                     del widget
-        self.lbl_mem.setText(
-            f"{psutil.Process().memory_info().rss / (1024 * 1024):.2f} Mb memory used")
+        if plglobals.debug == 1:
+            self.lbl_mem.setText(
+                f"{psutil.Process().memory_info().rss / (1024 * 1024):.2f} Mb memory used")

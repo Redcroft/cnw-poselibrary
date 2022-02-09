@@ -1,5 +1,6 @@
 import hou
 from PySide2 import QtWidgets
+from PySide2 import QtCore
 
 from . import plglobals
 
@@ -9,6 +10,8 @@ if plglobals.debug == 1:
 
 
 class UI(QtWidgets.QWidget):
+    path = QtCore.Signal()
+
     """ Contains all the widgets to create a capture interface."""
 
     def __init__(self, parent=None):
@@ -48,3 +51,4 @@ class UI(QtWidgets.QWidget):
         if file_path:
             self.le_lib_dir.setText(str(file_path))
             plglobals.lib_path = str(hou.expandString(file_path))
+            self.path.emit()

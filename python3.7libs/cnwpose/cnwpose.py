@@ -40,10 +40,15 @@ class CnwPose(QtWidgets.QWidget):
         '''
         Build the interface
         '''
+        plglobals.debug = 1
 
+        # Init modules
         self.header = header.UI()
         self.capture = capture.UI()
         self.library = library.UI()
+
+        # Signals and slots
+        self.header.path.connect(self.library.refreshLibrary)
 
         self.tab_widget = QtWidgets.QTabWidget()
         self.tab_widget.addTab(self.capture, 'Capture')
