@@ -20,6 +20,7 @@ if plglobals.debug == 1:
 
 class UI(QtWidgets.QWidget):
     """ Contains all the widgets to create a capture interface."""
+    capture = QtCore.Signal()
 
     def __init__(self, parent=None):
         super(UI, self).__init__()
@@ -102,6 +103,7 @@ The time range is offset to start at frame 0, rather than when it currently star
             object = object.parent()
         self._captureThumbnailSequence(frame_range, object, clip_name, dir)
         self._writeToFile(anim_dict, clip_name, dir)
+        self.capture.emit()
 
     def _capturePose(self):
         '''Capture a Pose from the selected controls in the channel list. The stored frame starts from zero'''
@@ -122,6 +124,7 @@ The time range is offset to start at frame 0, rather than when it currently star
             object = object.parent()
         self._captureThumbnailStill(object, pose_name, dir)
         self._writeToFile(anim_dict, pose_name, dir)
+        self.capture.emit()
 
     def _jsonFromValue(self, time, value):
         return [{'time': time, 'value': value, 'slope': 0.0,

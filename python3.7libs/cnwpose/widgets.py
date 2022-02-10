@@ -1,5 +1,7 @@
 import hou
 import os
+import re
+import shutil
 import sys
 from PySide2 import QtWidgets
 from PySide2 import QtCore
@@ -185,6 +187,8 @@ class ScrollingFlowWidget(QtWidgets.QWidget):
 
 class QImageThumbnail(QtWidgets.QWidget):
     clicked = QtCore.Signal(QtCore.Qt.MouseButton)
+    deleted = QtCore.Signal()
+    rename = QtCore.Signal()
     label_text = ''
     name = ''
     path = ''
@@ -217,6 +221,36 @@ class QImageThumbnail(QtWidgets.QWidget):
         self.thumbnail.setParent(None)
         self.label.setParent(None)
         self.setParent(None)
+
+    def _del_clip(self):
+        shutil.rmtree(self.path)
+        self.deleted.emit()
+
+    def _rename_clip(self):
+        rename = hou.ui.readInput(
+            'New Clip Name', severity=hou.severityType.ImportantMessage)
+        if rename is None or rename[1] == '':
+            if utils.warningDialog('Invalid Name'):
+                self._rename_clip()
+            else:
+                return False
+        new_name = re.sub(r'\W+', '_', rename[1])
+        dir = os.path.join(os.path.dirname(self.path), new_name)
+        print(self.path, dir)
+        if os.path.isfile(os.path.join(self.path, self.name)):
+            os.rename(os.path.join(self.path, self.name),
+                      os.path.join(self.path, new_name))
+        if os.path.isfile(os.path.join(self.path, self.name + '.gif')):
+            os.rename(os.path.join(self.path, self.name + '.gif'),
+                      os.path.join(self.path, new_name + '.gif'))
+        if os.path.isfile(os.path.join(self.path, self.name + '.jpg')):
+            os.rename(os.path.join(self.path, self.name + '.jpg'),
+                      os.path.join(self.path, new_name + '.jpg'))
+        if os.path.isdir(self.path):
+            npath = os.path.join(os.path.dirname(self.path), new_name)
+            os.rename(self.path, npath)
+
+        self.rename.emit()
 
     def name(self):
         return self.name
@@ -290,10 +324,6 @@ class QImageThumbnail(QtWidgets.QWidget):
         rename_option = menu.addAction('Rename')
 
         delete_option.triggered.connect(self._del_clip)
-
-        hello_option.triggered.connect(
-            lambda: self.label.setText('Hello World'))
-        test_option.triggered.connect(
-            lambda: self.label.setText('Testing my custom widget'))
+        rename_option.triggered.connect(self._rename_clip)
 
         menu.exec_(self.mapToGlobal(pos))

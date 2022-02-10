@@ -147,12 +147,13 @@ class UI(QtWidgets.QWidget):
 
     def getJSON(self):
         filename = os.path.join(plglobals.clip['dir'], plglobals.clip['name'])
-        with gzip.open(filename, 'rt', encoding='UTF-8') as zipfile:
-            self.json_data = json.load(zipfile)
-        if plglobals.debug == 1:
-            self.te_debug.setPlainText('')
-            self.te_debug.insertPlainText(
-                f"{plglobals.clip['name']}\n{plglobals.clip['dir']}\n{self.json_data}")
+        if os.path.isfile(filename):
+            with gzip.open(filename, 'rt', encoding='UTF-8') as zipfile:
+                self.json_data = json.load(zipfile)
+            if plglobals.debug == 1:
+                self.te_debug.setPlainText('')
+                self.te_debug.insertPlainText(
+                    f"{plglobals.clip['name']}\n{plglobals.clip['dir']}\n{self.json_data}")
 
     def getTimeLength(self):
         end = 0.0
@@ -196,13 +197,15 @@ class UI(QtWidgets.QWidget):
             return False
         sel = utils.selectChannels()
         if len(sel) == 0:
-            utils.warningDialog("Nothing Selected")
+            sel = hou.selectedNodes()[0].parms()
+        if len(sel) == 0:
+            utils.warningDialog("No Object/Channels Selected")
             return False
         frame = hou.frame()
         time = hou.frameToTime(hou.frame())
         length = self.getTimeLength()
         mult = max(self.if_scale.value(), 0.01)
-        length = hou.timeToFrame(length * mult)
+        length = hou.timeToFrame(length / mult)
         method = self.combo.currentText()
         jsn = self.json_data
         if method == "Insert":
@@ -218,18 +221,19 @@ class UI(QtWidgets.QWidget):
             utils.warningDialog('Merge is not implemented yet')
             return False
         elif method == "Replace":
-            # TODO: Remove all overlapping keyframes
-            utils.warningDialog('Replace is not implemented yet')
-            return False
+            for c in sel:
+                c_frames = c.keyframesInRange(frame, frame+length)
+                for k in c_frames:
+                    c.deleteKeyframeAtFrame(k.frame())
         elif method == "Replace All":
-            # TODO: Remove all keyframes first
-            utils.warningDialog('Replace All is not implemented yet')
-            return False
+            for c in sel:
+                c.deleteAllKeyframes()
         for p, v in jsn.items():
             for c in sel:
                 if c.name() == p:
+                    c.setScope(True)
                     for k in v:
                         frame = hou.Keyframe()
                         frame.fromJSON(k)
-                        frame.setTime((frame.time() * mult) + time)
+                        frame.setTime((frame.time() / mult) + time)
                         c.setKeyframe(frame)

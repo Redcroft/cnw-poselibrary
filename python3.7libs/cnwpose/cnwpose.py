@@ -49,6 +49,7 @@ class CnwPose(QtWidgets.QWidget):
 
         # Signals and slots
         self.header.path.connect(self.library.refreshLibrary)
+        self.capture.capture.connect(self.library.refreshLibrary)
 
         self.tab_widget = QtWidgets.QTabWidget()
         self.tab_widget.addTab(self.capture, 'Capture')

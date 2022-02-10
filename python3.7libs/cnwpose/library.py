@@ -54,12 +54,14 @@ class UI(QtWidgets.QWidget):
             lib_layout.addWidget(self.lbl_mem)
         btn_layout = QtWidgets.QHBoxLayout()
         lib_layout.addLayout(btn_layout)
+        btn_layout.addStretch()
         self.btn_r = QtWidgets.QPushButton('Reload')
         self.btn_r.clicked.connect(self.refreshLibrary)
         btn_layout.addWidget(self.btn_r)
         self.btn = QtWidgets.QPushButton('Clear')
         self.btn.clicked.connect(self._clearLibrary)
         btn_layout.addWidget(self.btn)
+        btn_layout.addStretch()
 
         # Thumbnails
         self.flow = widgets.ScrollingFlowWidget()
@@ -100,6 +102,8 @@ class UI(QtWidgets.QWidget):
                 clip.setType(i['type'])
                 self.flow.addWidget(clip)
                 clip.clicked.connect(self.getClip)
+                clip.deleted.connect(self.refreshLibrary)
+                clip.rename.connect(self.refreshLibrary)
                 gif = os.path.join(i['dir'], i['name'] + '.gif')
                 jpg = os.path.join(i['dir'], i['name'] + '.jpg')
                 if os.path.isfile(gif):
