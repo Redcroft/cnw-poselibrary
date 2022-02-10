@@ -186,7 +186,7 @@ class ScrollingFlowWidget(QtWidgets.QWidget):
 
 
 class QImageThumbnail(QtWidgets.QWidget):
-    clicked = QtCore.Signal(QtCore.Qt.MouseButton)
+    clicked = QtCore.Signal()
     deleted = QtCore.Signal()
     rename = QtCore.Signal()
     label_text = ''
@@ -221,6 +221,12 @@ class QImageThumbnail(QtWidgets.QWidget):
         self.thumbnail.setParent(None)
         self.label.setParent(None)
         self.setParent(None)
+
+    def _sel_clip(self):
+        plglobals.clip['name'] = self.name
+        plglobals.clip['dir'] = self.path
+        plglobals.clip['type'] = self.clip_type
+        self.clicked.emit()
 
     def _del_clip(self):
         shutil.rmtree(self.path)
@@ -299,30 +305,38 @@ class QImageThumbnail(QtWidgets.QWidget):
         self.style().drawPrimitive(QtWidgets.QStyle.PE_Widget, option, painter, self)
 
     def mousePressEvent(self, event):
-        plglobals.clip['name'] = self.name
-        plglobals.clip['dir'] = self.path
-        plglobals.clip['type'] = self.clip_type
-        self.clicked.emit(event.button())
+        if event.button() == QtCore.Qt.MouseButton.LeftButton:
+            self._sel_clip()
 
     def eventFilter(self, obj, event):
         if event.type() == QtCore.QEvent.HoverEnter:
-            if self.thumb_type == 'movie':
-                self.movie.start()
-            self.label.setStyleSheet('color: black')
+            self._hoverStyle()
         if event.type() == QtCore.QEvent.HoverLeave:
-            if self.thumb_type == 'movie':
-                self.movie.jumpToFrame(0)
-                self.movie.stop()
-            self.label.setStyleSheet('color: rgb(204, 204, 204)')
+            self._clearStyle()
         return QtWidgets.QWidget.eventFilter(self, obj, event)
 
+    def _hoverStyle(self):
+        if self.thumb_type == 'movie':
+            self.movie.start()
+        self.label.setStyleSheet('color: black')
+
+    def _clearStyle(self):
+        if self.thumb_type == 'movie':
+            self.movie.jumpToFrame(0)
+            self.movie.stop()
+        self.label.setStyleSheet('color: rgb(204, 204, 204)')
+
     def right_click(self, pos):
+        self._clearStyle()
         menu = QtWidgets.QMenu()
         menu.setStyleSheet(hou.qt.styleSheet())
 
+        select_option = menu.addAction('Select')
+        menu.addSeparator()
         delete_option = menu.addAction('Delete')
         rename_option = menu.addAction('Rename')
 
+        select_option.triggered.connect(self._sel_clip)
         delete_option.triggered.connect(self._del_clip)
         rename_option.triggered.connect(self._rename_clip)
 
