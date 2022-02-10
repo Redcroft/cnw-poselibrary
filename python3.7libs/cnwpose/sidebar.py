@@ -209,6 +209,7 @@ class UI(QtWidgets.QWidget):
         method = self.combo.currentText()
         jsn = self.json_data
         if method == "Insert":
+            print('Insert')
             for c in sel:
                 c_frames = c.keyframesAfter(frame)
                 for k in c_frames:
@@ -216,11 +217,17 @@ class UI(QtWidgets.QWidget):
                     k.setFrame(k.frame() + length)
                 c.setKeyframes(c_frames)
         elif method == "Merge":
-            # TODO: take keyframes and add the current value before applying
-            # also remove all keyframes in place
-            utils.warningDialog('Merge is not implemented yet')
-            return False
+            print('Merge')
+            for c in sel:
+                for p, v in jsn.items():
+                    if c.name() == p:
+                        for k in v:
+                            k['value'] = k['value'] + c.evalAtTime(k['time'])
+                c_frames = c.keyframesInRange(frame, frame+length)
+                for k in c_frames:
+                    c.deleteKeyframeAtFrame(k.frame())
         elif method == "Replace":
+            print('Replace')
             for c in sel:
                 c_frames = c.keyframesInRange(frame, frame+length)
                 for k in c_frames:
@@ -237,3 +244,4 @@ class UI(QtWidgets.QWidget):
                         frame.fromJSON(k)
                         frame.setTime((frame.time() / mult) + time)
                         c.setKeyframe(frame)
+        self.getJSON()

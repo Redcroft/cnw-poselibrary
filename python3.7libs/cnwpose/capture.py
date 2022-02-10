@@ -74,8 +74,8 @@ The time range is offset to start at frame 0, rather than when it currently star
         frame_range = hou.playbar.selectionRange()
         if frame_range == None:
             frame_range = hou.playbar.frameRange()
-        if frame_range[0] < 0:
-            frame_range[0] = 0
+        if frame_range[0] < 1:
+            frame_range[0] = 1
         start_time = hou.frameToTime(frame_range[0])
         sel_channels = utils.selectChannels()
         if len(sel_channels) == 0:

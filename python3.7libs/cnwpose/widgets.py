@@ -229,8 +229,11 @@ class QImageThumbnail(QtWidgets.QWidget):
         self.clicked.emit()
 
     def _del_clip(self):
-        shutil.rmtree(self.path)
-        self.deleted.emit()
+        confirm = utils.warningDialog(
+            f"Are you sure you want to delete `{self.name}`?", true_button="Delete")
+        if confirm:
+            shutil.rmtree(self.path)
+            self.deleted.emit()
 
     def _rename_clip(self):
         rename = hou.ui.readInput(
@@ -242,7 +245,6 @@ class QImageThumbnail(QtWidgets.QWidget):
                 return False
         new_name = re.sub(r'\W+', '_', rename[1])
         dir = os.path.join(os.path.dirname(self.path), new_name)
-        print(self.path, dir)
         if os.path.isfile(os.path.join(self.path, self.name)):
             os.rename(os.path.join(self.path, self.name),
                       os.path.join(self.path, new_name))

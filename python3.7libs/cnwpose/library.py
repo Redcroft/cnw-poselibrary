@@ -112,7 +112,9 @@ class UI(QtWidgets.QWidget):
                     clip.setImage(jpg)
                     self._resizeBtns()
         except Exception as e:
-            print(e)
+            if plglobals.debug == 1:
+                print(e)
+            pass
 
     def getClip(self):
         self.sidebar.updateClip()
