@@ -108,6 +108,7 @@ class UI(QtWidgets.QWidget):
                 jpg = os.path.join(i['dir'], i['name'] + '.jpg')
                 if os.path.isfile(gif):
                     clip.setMovie(gif)
+                    self._resizeBtns()
                 elif os.path.isfile(jpg):
                     clip.setImage(jpg)
                     self._resizeBtns()

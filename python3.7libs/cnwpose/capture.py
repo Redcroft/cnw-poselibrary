@@ -3,17 +3,21 @@ import hou
 import json
 import os
 import re
+import shutil
 
 from PIL import Image
 from PySide2 import QtWidgets
 from PySide2 import QtCore
+from PySide2 import QtGui
 
 from . import plglobals
+from . import thumb
 from . import utils
 
 
 if plglobals.debug == 1:
     from importlib import reload
+    reload(thumb)
     reload(plglobals)
     reload(utils)
 
@@ -21,6 +25,7 @@ if plglobals.debug == 1:
 class UI(QtWidgets.QWidget):
     """ Contains all the widgets to create a capture interface."""
     capture = QtCore.Signal()
+    cancel = False
 
     def __init__(self, parent=None):
         super(UI, self).__init__()
@@ -101,7 +106,14 @@ The time range is offset to start at frame 0, rather than when it currently star
         object = sel_channels[0].node()
         while(type(object) is not hou.ObjNode):
             object = object.parent()
-        self._captureThumbnailSequence(frame_range, object, clip_name, dir)
+        if clip_name == 'gary':
+            thumb.placeholder(os.path.join(dir, clip_name + '.jpg'))
+            utils.warningDialog('Why would you name it that?...')
+        else:
+            ok = self._captureThumbnailSequence(
+                frame_range, object, clip_name, dir)
+            if not ok:
+                return False
         self._writeToFile(anim_dict, clip_name, dir)
         self.capture.emit()
 
@@ -122,7 +134,13 @@ The time range is offset to start at frame 0, rather than when it currently star
         object = sel_channels[0].node()
         while(type(object) is not hou.ObjNode):
             object = object.parent()
-        self._captureThumbnailStill(object, pose_name, dir)
+        if pose_name == 'gary':
+            thumb.placeholder(os.path.join(dir, pose_name + '.jpg'))
+            utils.warningDialog('Why would you name it that?...')
+        else:
+            ok = self._captureThumbnailStill(object, pose_name, dir)
+            if not ok:
+                return False
         self._writeToFile(anim_dict, pose_name, dir)
         self.capture.emit()
 
@@ -134,7 +152,7 @@ The time range is offset to start at frame 0, rather than when it currently star
     def _writeToFile(self, data, name, dir):
         filename = os.path.join(dir, name)
         if not os.path.exists(dir):
-            os.mkdirs(dir)
+            os.makedirs(dir)
         try:
             with gzip.open(filename, 'wt', encoding='UTF-8') as zipfile:
                 json.dump(data, zipfile)
@@ -151,20 +169,31 @@ The time range is offset to start at frame 0, rather than when it currently star
             return False
 
     def _captureThumbnailStill(self, object, pose_name, dir):
+        if not os.path.isdir(dir):
+            os.makedirs(dir)
         filename = os.path.join(dir, hou.expandString(f"{pose_name}.jpg"))
         self._captureThumbnail(hou.frame(), filename, object)
 
     def _captureThumbnailSequence(self, frames, object, clip_name, dir):
         cur_frame = hou.frame()
         img_filenames = []
+        if not os.path.isdir(dir):
+            os.makedirs(dir)
+        self.cancel = False
         for i in range(int(frames[0]), int(frames[1])):
             hou.setFrame(i)
             filename = os.path.join(
                 dir, hou.expandString(f"{clip_name}.$F4.jpg"))
             img_filenames.append(filename)
-            self._captureThumbnail(i, filename, object)
+            ok = self._captureThumbnail(i, filename, object)
+            assert ok
+            if self.cancel:
+                shutil.rmtree(dir)
+                self.cancel = False
+                return False
         hou.setFrame(cur_frame)
         self._convertImagesToGif(img_filenames)
+        return True
 
     def _convertImagesToGif(self, filename_list):
         gif = []
@@ -198,7 +227,9 @@ The time range is offset to start at frame 0, rather than when it currently star
             else:
                 hou.hscript(
                     f"viewwrite -v {object} -R beauty -g 2.21 -f {frame} {frame} {camera_path} {temp}")
-
+        refPlane.setIsVisible(grid)
+        if not os.path.isfile(temp):
+            return False
         try:
             img = Image.open(temp)
             w, h = img.size
@@ -211,4 +242,8 @@ The time range is offset to start at frame 0, rather than when it currently star
             os.remove(temp)
         except Exception as e:
             utils.warningDialog(f"Unable to save thumbnail\nError: {e}")
-        refPlane.setIsVisible(grid)
+        return True
+
+    def keyPressEvent(self, event):
+        if event.key() == QtCore.Qt.Key_Escape:
+            self.cancel = True

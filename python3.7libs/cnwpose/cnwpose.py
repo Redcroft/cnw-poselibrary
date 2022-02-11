@@ -15,13 +15,6 @@ from . import library
 
 '''
 TODO: better name than cnwpose
-TODO: create capture UI
-TODO: create view UI
-TODO: capture flipbook stills/images
-TODO: frame insertion methods
-TODO: benchmark uncompressed vs gzip vs bz2 on final setup
-TODO: look into PySide2.QtGui.QMovie
-TODO: add easter egg
 '''
 
 if plglobals.debug == 1:
