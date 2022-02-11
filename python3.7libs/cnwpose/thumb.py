@@ -10,6 +10,8 @@ def placeholder(filepath):
         os.makedirs(os.path.dirname(filepath))
     path = os.path.join(os.path.dirname(__file__), "placeholders", "*.jpg")
     jpg = glob.glob(path)
+    if len(jpg) == 0:
+        return False
     img = Image.open(random.choice(jpg))
     w, h = img.size
     crop = min(w, h)
